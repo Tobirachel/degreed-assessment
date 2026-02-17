@@ -1,8 +1,9 @@
-name: Deploy Degreed Assessment to Azure
+name: Deploy Degreed Web Application
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -13,10 +14,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      # -------------------------------------------------------
+      # 1. Checkout source code
+      # -------------------------------------------------------
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Azure Login (OIDC)
+      # -------------------------------------------------------
+      # 2. Authenticate to Azure using OIDC
+      # -------------------------------------------------------
+      - name: Sign in to Azure
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -30,24 +37,37 @@ jobs:
 
       - name: Terraform Init
         working-directory: terraform
-        run: terraform init
+        run: terraform init -input=false -no-color
 
       - name: Terraform Apply
         working-directory: terraform
         run: |
           terraform apply -auto-approve \
+            -input=false \
+            -no-color \
+            -compact-warnings \
             -var="sql_admin_password=${{ secrets.SQL_ADMIN_PASSWORD }}" \
             -var="name_suffix=${{ secrets.NAME_SUFFIX }}"
 
-      - name: Read Terraform Outputs
+      - name: Capture Terraform outputs
         id: tfout
         working-directory: terraform
         run: |
-          echo "WEB_APP_NAME=$(terraform output -raw web_app_name)" >> $GITHUB_OUTPUT
-          echo "SQL_SERVER=$(terraform output -raw sql_server_fqdn)" >> $GITHUB_OUTPUT
-          echo "DB_NAME=$(terraform output -raw db_name)" >> $GITHUB_OUTPUT
+          WEB_APP_NAME="$(terraform output -raw web_app_name)"
+          WEB_APP_URL="$(terraform output -raw web_app_url)"
+          SQL_SERVER="$(terraform output -raw sql_server_fqdn)"
+          DB_NAME="$(terraform output -raw db_name)"
+          RESOURCE_GROUP="$(terraform output -raw resource_group)"
 
-      - name: Install sqlcmd
+          {
+            echo "WEB_APP_NAME=$WEB_APP_NAME"
+            echo "WEB_APP_URL=$WEB_APP_URL"
+            echo "SQL_SERVER=$SQL_SERVER"
+            echo "DB_NAME=$DB_NAME"
+            echo "RESOURCE_GROUP=$RESOURCE_GROUP"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Install sqlcmd tools
         run: |
           sudo apt-get update
           sudo apt-get install -y curl apt-transport-https gnupg
@@ -56,7 +76,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y mssql-tools18 unixodbc-dev
 
-      - name: Seed Database
+      - name: Seed Azure SQL database
         env:
           SQL_SERVER: ${{ steps.tfout.outputs.SQL_SERVER }}
           DB_NAME: ${{ steps.tfout.outputs.DB_NAME }}
@@ -70,16 +90,16 @@ jobs:
             -C \
             -i db/seed.sql
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      - name: Install Dependencies
+      - name: Install application dependencies
         working-directory: app
         run: npm ci || npm install
 
-      - name: Zip App
+      - name: Package application
         run: |
           cd app
           zip -r ../app.zip .
@@ -89,3 +109,10 @@ jobs:
         with:
           app-name: ${{ steps.tfout.outputs.WEB_APP_NAME }}
           package: app.zip
+
+      - name: Deployment Summary
+        run: |
+          echo "Resource Group : ${{ steps.tfout.outputs.RESOURCE_GROUP }}"
+          echo "Web App URL    : ${{ steps.tfout.outputs.WEB_APP_URL }}"
+          echo "SQL Server     : ${{ steps.tfout.outputs.SQL_SERVER }}"
+          echo "Database       : ${{ steps.tfout.outputs.DB_NAME }}"
