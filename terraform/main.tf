@@ -53,9 +53,9 @@ resource "azurerm_mssql_server" "sql" {
 }
 
 resource "azurerm_mssql_database" "db" {
-  name           = var.db_name
+  name           = "${local.prefix}-db"
   server_id      = azurerm_mssql_server.sql.id
-  sku_name       = "GP_S_Gen5_2"
+  sku_name       = "GP_Gen5_2"
   zone_redundant = false
 }
 
