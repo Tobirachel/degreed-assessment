@@ -5,10 +5,10 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 const dbConfig = {
-  server: process.env.DB_SERVER,     // degreed-wapps-prod-<suffix>-sql.database.windows.net
-  database: process.env.DB_NAME,     // degreed-wapps-prod-db
-  user: process.env.DB_USER,         // sqladminuser
-  password: process.env.DB_PASSWORD, // from GitHub Secret injected into App Settings
+  server: process.env.DB_SERVER,    
+  database: process.env.DB_NAME,     
+  user: process.env.DB_USER,         
+  password: process.env.DB_PASSWORD, 
   options: { encrypt: true, trustServerCertificate: false }
 };
 

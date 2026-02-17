@@ -29,6 +29,13 @@ resource "azurerm_key_vault" "kv" {
   soft_delete_retention_days  = 7
   purge_protection_enabled    = false
   enable_rbac_authorization   = true
+
+timeouts {
+    create  = "30m"
+    read    = "10m"
+    update  = "30m"
+    delete  ="30m"
+}
 }
 
 resource "azurerm_mssql_server" "sql" {
@@ -62,7 +69,7 @@ resource "azurerm_service_plan" "plan" {
   resource_group_name = azurerm_resource_group.rg.name
   location            = var.location
   os_type             = "Linux"
-  sku_name            = "P1v3"
+  sku_name            = "B1"
 }
 
 resource "azurerm_linux_web_app" "web" {
