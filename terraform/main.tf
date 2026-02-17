@@ -1,5 +1,6 @@
 locals {
   prefix          = "${var.company}-${var.workload}-${var.environment}"
+  unique          = "${local.prefix}-${var.name_suffix}"
   application_insights_name = lower("${local.prefix}-ai")
   sql_server_name = lower("${local.prefix}-sql")
   web_app_name    = lower("${local.prefix}-web")
@@ -7,7 +8,7 @@ locals {
 }
 
 resource "azurerm_resource_group" "rg" {
-  name     = "${local.prefix}-rg"
+  name     = "${local.unique}-rg"
   location = var.location
 }
 
@@ -65,7 +66,7 @@ resource "azurerm_mssql_firewall_rule" "allow_azure" {
 }
 
 resource "azurerm_service_plan" "plan" {
-  name                = "${local.prefix}-plan"
+  name                = "${local.unique}-plan"
   resource_group_name = azurerm_resource_group.rg.name
   location            = var.location
   os_type             = "Linux"
