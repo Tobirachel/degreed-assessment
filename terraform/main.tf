@@ -1,11 +1,13 @@
 locals {
-  prefix          = "${var.company}-${var.workload}-${var.environment}"
-  unique          = "${local.prefix}-${var.name_suffix}"
-  application_insights_name = lower("${local.prefix}-ai")
-  sql_server_name = lower("${local.prefix}-sql")
-  web_app_name    = lower("${local.prefix}-web")
-  kv_name         = substr(lower(replace("${var.company}${var.workload}${var.environment}kv", "-", "")), 0, 24)
+  prefix = "${var.company}-${var.workload}-${var.environment}"
+  unique = "${local.prefix}-${var.name_suffix}"
+  application_insights_name = lower("${local.unique}-ai")
+  sql_server_name           = lower(replace("${local.unique}-sql", "_", "-"))
+  web_app_name              = lower(replace("${local.unique}-web", "_", "-"))
+  kv_raw  = lower("${var.company}${var.workload}${var.environment}${var.name_suffix}kv")
+  kv_name = substr(replace(replace(local.kv_raw, "-", ""), "_", ""), 0, 24)
 }
+
 
 resource "azurerm_resource_group" "rg" {
   name     = "${local.unique}-rg"
@@ -54,7 +56,7 @@ resource "azurerm_mssql_database" "db" {
   name           = var.db_name
   server_id      = azurerm_mssql_server.sql.id
   sku_name       = "GP_S_Gen5_2"
-  zone_redundant = true
+  zone_redundant = false
 }
 
 # Allow Azure services (App Service) to reach SQL (simple + deployable)
